@@ -1,0 +1,14 @@
+# Micromamba environment file
+# https://marketplace.visualstudio.com/items?itemName=corker.vscode-micromamba
+
+name: nga
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python
+  - numpy
+  - notebook
+  - matplotlib
+  - ipython

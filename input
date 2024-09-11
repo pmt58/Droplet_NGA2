@@ -1,5 +1,5 @@
 # Parallelization
-Partition : 3 1 3
+Partition : 2 1 2
 
 # Mesh definition
 Lx : 5
@@ -18,9 +18,9 @@ Initial contact angle : 170
 Beta : 0.5
 
 # Time integration
-Max timestep size : 1e-2
+Max timestep size : 2e-2
 Max cfl number :    2.0
-Max time :          5
+Max time :          10
 
 # Pressure solver
 Pressure tolerance : 1e-6
