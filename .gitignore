@@ -2,3 +2,5 @@ ensight*
 monitor*
 nga.dp.gnu.opt.mpi.exe
 build/
+.ipynb_checkpoints/
+result.txt
