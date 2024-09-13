@@ -16,6 +16,7 @@ Oh : 0.05    #<<< Oh=mu_l/sqrt(rho_l*R*sigma)
 CA : 60
 Initial contact angle : 170
 Beta : 1
+Gravity : 0 -1 0
 
 # Time integration
 Max timestep size : 2e-2
