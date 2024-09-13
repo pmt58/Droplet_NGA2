@@ -10,7 +10,7 @@ module simulation
    use ensight_class,     only: ensight
    use surfmesh_class,    only: surfmesh
    use event_class,       only: event
-   use monitor_class_multirun,     only: monitor_multirun
+   use monitor_class,     only: monitor
    implicit none
    private
    
@@ -27,7 +27,7 @@ module simulation
    type(event)    :: ens_evt
    
    !> Simulation monitor file
-   type(monitor_multirun) :: mfile,cflfile
+   type(monitor) :: mfile,cflfile
    
    public :: simulation_init,simulation_run,simulation_final
    
@@ -40,7 +40,7 @@ module simulation
    real(WP) :: Rdrop, Beta_NS
    real(WP) :: height,R_wet,CArad,CAdeg,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
-   type(monitor_multirun) :: ppfile
+   type(monitor) :: ppfile
    
 contains
    
@@ -360,7 +360,7 @@ contains
          call fs%get_max()
          call vf%get_max()
          ! Create simulation monitor
-         mfile=monitor_multirun(fs%cfg%amRoot,'simulation')
+         mfile=monitor(fs%cfg%amRoot,'simulation')
          call mfile%add_column(time%n,'Timestep number')
          call mfile%add_column(time%t,'Time')
          call mfile%add_column(time%dt,'Timestep size')
@@ -377,7 +377,7 @@ contains
          call mfile%add_column(fs%psolv%rerr,'Pressure error')
          call mfile%write()
          ! Create CFL monitor
-         cflfile=monitor_multirun(fs%cfg%amRoot,'cfl')
+         cflfile=monitor(fs%cfg%amRoot,'cfl')
          call cflfile%add_column(time%n,'Timestep number')
          call cflfile%add_column(time%t,'Time')
          call cflfile%add_column(fs%CFLst,'STension CFL')
@@ -396,7 +396,7 @@ contains
          ! Post-proc wetting information
          call postproc_data()
          ! Create monitor for liquid data
-         ppfile=monitor_multirun(fs%cfg%amRoot,'dropinfo')
+         ppfile=monitor(fs%cfg%amRoot,'dropinfo')
          call ppfile%add_column(time%n,'Timestep number')
          call ppfile%add_column(time%t,'Time')
          call ppfile%add_column(vf%VFmax,'VOF maximum')
