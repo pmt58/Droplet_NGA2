@@ -213,7 +213,7 @@ contains
          ! Prepare the analytical calculation of a sphere on a wall
          call param_read('Initial drop radius',Rdrop,default=1.0_WP)
          call param_read('Initial contact angle',contact,default=180.0_WP); contact=contact*Pi/180.0_WP
-         call param_read('Beta',Beta_NS,default=2.0_WP)
+         call param_read('Beta',Beta_NS,default=1.0_WP)
          if (vf%cfg%nz.eq.1) then ! 2D analytical drop shape
             Rdrop=Rdrop*sqrt(Pi/(2.0_WP*(contact-sin(contact)*cos(contact))))
          else ! 3D analytical drop shape
