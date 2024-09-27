@@ -549,82 +549,6 @@ contains
          call postproc_data(); call ppfile%write()
          
       end do
-      
-      
-      ! Post-process temporal powerlaw model using ODRPACK
-      ! odr_fit: block
-      !    use, intrinsic :: iso_fortran_env, only: output_unit
-      !    use mathtools, only: Pi
-      !    use messager,  only: log
-      !    use string,    only: str_long
-      !    character(len=str_long) :: message
-      !    integer :: i
-      !    ! ODRPACK variables - explicit model based on powerlaw of time
-      !    integer                       :: N                      !> Number of observations (number of polygons)
-      !    integer , parameter           :: M=1                    !> Number of elements per explanatory variables (1 time)
-      !    integer , parameter           :: NP=2                   !> Number of parameters in our model (2 for a powerlaw in time without time shift)
-      !    integer , parameter           :: NQ=1                   !> Number of response per observation (only 1, the wet radius)
-      !    real(WP), dimension(NP)       :: BETA=0.0_WP            !> Array of model parameter values (the exponent and pre-exponential factor)
-      !    real(WP), dimension(:,:)  , allocatable :: YY           !> Value of response variable (of size LDYYxNQ)
-      !    integer                       :: LDYY                   !> Leading dimension of YY (equals N since an explicit model is used)
-      !    real(WP), dimension(:,:)  , allocatable :: XX           !> Value of explanatory variable (of size LDXXxM)
-      !    integer                       :: LDXX                   !> Leading dimension of XX (equals N)
-      !    real(WP), dimension(:,:,:), allocatable :: WE           !> Weighting of response data (of size LDWExLD2WExNQ)
-      !    integer                       :: LDWE                   !> Leading dimension of WE (equals N since an explicit model is used)
-      !    integer                       :: LD2WE                  !> Second dimension of WE (equals NQ)
-      !    real(WP), dimension(:,:,:), allocatable :: WD           !> Weighting of explanatory data (of size LDWDxLD2WDxM)
-      !    integer                       :: LDWD                   !> Leading dimension of WD (equals N)
-      !    integer                       :: LD2WD                  !> Second dimension of WD (equals 1)
-      !    integer , dimension(NP)       :: IFIXB=-1               !> Whether any model parameters has to be kept constant
-      !    integer , parameter           :: LDIFX=1                !> Leading dimension of IFIXX (equals 1)
-      !    integer , dimension(LDIFX,M)  :: IFIXX=-1               !> Whether any explanatory variable data is to be treated as "fixed"
-      !    integer                       :: JOB=00030              !> 5-digit parameter flag that controls execution (this invokes analytical Jacobian with explicit model)
-      !    integer                       :: NDIGIT=1               !> Number of reliable digits in our model - let ODRPACK figure it out on its own
-      !    real(WP)                      :: TAUFAC=0.0_WP          !> To control size of first step (ignored here)
-      !    real(WP)                      :: SSTOL=-1.0_WP          !> Relative cvg of sum of squares: this sets it to 1e-8             ********* Need to change to sth else
-      !    real(WP)                      :: PARTOL=-1.0_WP         !> Relative cvg for model parameters: this sets it to 1e-11         ********* Need to change to sth else
-      !    integer                       :: MAXIT=-1               !> Maximum number of iterations                                     ********* Need to change to sth else
-      !    integer                       :: IPRINT=0               !> 4-digit parameter flag for controlling printing (default is -1)
-      !    integer                       :: LUNERR=10              !> Logical unit for error reporting (6 by default)
-      !    integer                       :: LUNRPT=10              !> Logical unit for reporting
-      !    real(WP), dimension(NP)       :: STPB=0.0_WP            !> Relative step sizes for Jacobian for model parameters (here, default)
-      !    integer , parameter           :: LDSTPD=1               !> Leading dimension of STPD, either 1 or N (here, 1)
-      !    real(WP), dimension(LDSTPD,1) :: STPD=0.0_WP            !> Relative step sizes for Jacobian for input errors (here, default)
-      !    real(WP), dimension(NP)       :: SCLB=1.0_WP            !> Scaling for the model parameters (here, not default but set to 1.0 to avoid rescaling 0 coefficients)
-      !    real(WP), dimension(:,:)  , allocatable :: SCLD         !> Scaling for the input errors (here, not default but set to 1.0 to avoid rescaling 0 coefficients)
-      !    integer                       :: LDSCLD                 !> Leading dimension of SCLD, either 1 or N (here, N)
-      !    integer                       :: LWORK                  !> Size of WORK array
-      !    real(WP), dimension(:)    , allocatable :: WORK         !> WORK array
-      !    integer , parameter           :: LiWORK=20+NP+NQ*(NP+M) !> Size of IWORK array
-      !    integer , dimension(LiWORK)   :: iWORK                  !> iWORK array
-      !    integer                       :: INFO                   !> Why the calculations stopped
-      !    ! Copy over data and sizes - skip t=0
-      !    N=size(all_time,dim=1)-1
-      !    LDYY=N; allocate(YY(LDYY,NQ)); YY(:,1)=all_rwet(2:)
-      !    LDXX=N; allocate(XX(LDXX,M )); XX(:,1)=all_time(2:)
-      !    LDWE=N; LD2WE=NQ; allocate(WE(LDWE,LD2WE,NQ)); WE=1.0_WP
-      !    LDWD=N; LD2WD=1 ; allocate(WD(LDWD,LD2WD,M )); WD=1.0_WP
-      !    LDSCLD=N; allocate(SCLD(LDSCLD,M)); SCLD=1.0_WP
-      !    LWORK=18+11*NP+NP**2+M+M**2+4*N*NQ+6*N*M+2*N*NQ*NP+2*N*NQ*M+NQ**2+5*NQ+NQ*(NP+M)+(LDWE*LD2WE)*NQ; allocate(WORK(LWORK))
-      !    ! Adjust weights to eliminate the early (t<0.25) and late (t>1.5) non-powerlaw parts
-      !    do i=1,N
-      !       if (XX(i,1).le.0.25_WP.or.XX(i,1).ge.1.50_WP) then
-      !          WE(i,1,1)=0.0_WP
-      !          WD(i,1,1)=0.0_WP
-      !       end if
-      !    end do
-      !    ! Call ODRPACK to find powerlaw fit
-      !    call DODRC(powerlaw_model,N,M,NP,NQ,BETA,YY,LDYY,XX,LDXX,WE,LDWE,LD2WE,WD,LDWD,LD2WD,IFIXB,IFIXX,LDIFX,JOB,NDIGIT,TAUFAC,&
-      !    &          SSTOL,PARTOL,MAXIT,IPRINT,LUNERR,LUNRPT,STPB,STPD,LDSTPD,SCLB,SCLD,LDSCLD,WORK,LWORK,iWORK,LiWORK,INFO)
-      !    ! Get back powerlaw model
-      !    if (fs%cfg%amRoot) then
-      !       write(output_unit,'(es12.5,x,es12.5,x,es12.5,x,es12.5)') 180.0_WP*fs%contact_angle/Pi,fs%visc_l,BETA(1),BETA(2)
-      !       write(message,'("Pre-exponential factor = ",es12.5)') BETA(1); call log(message)
-      !       write(message,'("Powerlaw time exponent = ",es12.5)') BETA(2); call log(message)
-      !    end if
-      ! end block odr_fit
-      
-      
    end subroutine simulation_run
    
    
@@ -635,10 +559,12 @@ contains
       integer :: i,j,k
       real(WP), dimension(3) :: nw
       real(WP) :: mysurf,mycos,cos_contact_angle
-      
+      real(WP) :: log_res_slip
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
-      
+      ! Force use of new Beta Factor
+      log_res_slip=5
+      Beta_NS=fs%contact_angle*fs%contact_angle/sin(fs%contact_angle)/log_res_slip
       ! Loop over domain and identify cells that require contact angle model
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
@@ -673,45 +599,6 @@ contains
       end do
       
    end subroutine contact_slip
-   
-   
-   !> Definition of our powerlaw function of time model
-   subroutine powerlaw_model(N,M,NP,NQ,LDN,LDM,LDNP,BETA,XPLUSD,IFIXB,IFIXX,LDFIX,IDEVAL,F,FJACB,FJACD,ISTOP)
-      implicit none
-      ! Input parameters
-      integer , intent(in) :: IDEVAL,LDFIX,LDM,LDN,LDNP,M,N,NP,NQ
-      integer , dimension(NP)     , intent(in) :: IFIXB
-      integer , dimension(LDFIX,M), intent(in) :: IFIXX
-      real(WP), dimension(NP)     , intent(in) :: BETA
-      real(WP), dimension(LDN,M)  , intent(in) :: XPLUSD
-      ! Output parameters
-      real(WP), dimension(LDN,NQ) :: F
-      real(WP), dimension(LDN,LDNP,NQ) :: FJACB
-      real(WP), dimension(LDN,LDM ,NQ) :: FJACD
-      integer :: ISTOP,i
-      ! Check stopping condition - all values are acceptable
-      ISTOP=0
-      ! Compute model value
-      if (mod(IDEVAL,10).ge.1) then
-         do i=1,N
-            F(i,1)=BETA(1)*XPLUSD(i,1)**BETA(2)
-         end do
-      end if
-      ! Compute model derivatives with respect to BETA
-      if (mod(IDEVAL/10,10).GE.1) then
-         do i=1,N
-            FJACB(i,1,1)=XPLUSD(i,1)**BETA(2)
-            FJACB(i,2,1)=BETA(1)*XPLUSD(i,1)**BETA(2)*log(XPLUSD(i,1))
-         end do
-      end if
-      ! Compute model derivatives with respect to input
-      if (mod(IDEVAL/100,10).GE.1) then
-         do i=1,N
-            FJACD(i,1,1)=BETA(1)*BETA(2)*XPLUSD(i,1)**(BETA(2)-1.0_WP)
-         end do
-      end if
-   end subroutine powerlaw_model
-   
    
    !> Finalize the NGA2 simulation
    subroutine simulation_final
