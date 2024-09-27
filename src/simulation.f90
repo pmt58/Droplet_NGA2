@@ -563,7 +563,7 @@ contains
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
       ! Force use of new Beta Factor
-      log_res_slip=7 !log(dx/L_S)
+      log_res_slip=7 !log(dx/L_S)  fs%cfg%dx(1,1,1)   ... is an array
       Beta_NS=fs%contact_angle*fs%contact_angle/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
       ! Loop over domain and identify cells that require contact angle model
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
