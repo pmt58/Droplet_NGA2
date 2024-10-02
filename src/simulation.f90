@@ -37,7 +37,7 @@ module simulation
    
    !> Problem definition and post-processing
    real(WP), dimension(3) :: Cdrop
-   real(WP) :: Rdrop, Beta_NS
+   real(WP) :: Rdrop, Beta_NS, CLsolver
    real(WP) :: height,R_wet,CArad,CAdeg,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
    type(monitor) :: ppfile
@@ -171,7 +171,7 @@ contains
       use param, only: param_read
       implicit none
       
-      
+
       ! Allocate work arrays
       allocate_work_arrays: block
          allocate(resU(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
@@ -214,6 +214,7 @@ contains
          call param_read('Initial drop radius',Rdrop,default=1.0_WP)
          call param_read('Initial contact angle',contact,default=180.0_WP); contact=contact*Pi/180.0_WP
          call param_read('Beta',Beta_NS,default=1.0_WP)
+         call param_read('CLsolver',CLsolver,default=0.0_WP)
          if (vf%cfg%nz.eq.1) then ! 2D analytical drop shape
             Rdrop=Rdrop*sqrt(Pi/(2.0_WP*(contact-sin(contact)*cos(contact))))
          else ! 3D analytical drop shape
@@ -439,8 +440,9 @@ contains
          call time%increment()
          
          ! Implement slip condition for contact line modeling here
-         call contact_slip()
-         
+         do while (CLsolver.ne.0.0_WP)!enable slip model for solver numbers >0
+            call contact_slip()
+         end do
          ! Remember old VOF
          vf%VFold=vf%VF
          
@@ -494,7 +496,11 @@ contains
             call fs%update_laplacian()
             call fs%correct_mfr()
             call fs%get_div()
-            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)!,contact_model=static_contact)
+            if (CLsolver.eq.0.0_WP) then
+               call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
+            else if (CLsolver.gt.0.0_WP) then
+               call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)
+            end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
             fs%psolv%sol=0.0_WP
             call fs%psolv%solve()
@@ -565,6 +571,10 @@ contains
       ! Force use of new Beta Factor
       log_res_slip=log(1e9*fs%cfg%dx(1)*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
       Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
+      if (CLsolver.eq.1.0_WP) then
+         Beta_NS=1.0
+      end if
+
       ! Loop over domain and identify cells that require contact angle model
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
