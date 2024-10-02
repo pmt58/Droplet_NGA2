@@ -37,7 +37,8 @@ module simulation
    
    !> Problem definition and post-processing
    real(WP), dimension(3) :: Cdrop
-   real(WP) :: Rdrop, Beta_NS, CLsolver
+   real(WP) :: Rdrop, Beta_NS
+   integer :: CLsolver
    real(WP) :: height,R_wet,CArad,CAdeg,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
    type(monitor) :: ppfile
@@ -214,7 +215,7 @@ contains
          call param_read('Initial drop radius',Rdrop,default=1.0_WP)
          call param_read('Initial contact angle',contact,default=180.0_WP); contact=contact*Pi/180.0_WP
          call param_read('Beta',Beta_NS,default=1.0_WP)
-         call param_read('CLsolver',CLsolver,default=0.0_WP)
+         call param_read('CLsolver',CLsolver,default=0)
          if (vf%cfg%nz.eq.1) then ! 2D analytical drop shape
             Rdrop=Rdrop*sqrt(Pi/(2.0_WP*(contact-sin(contact)*cos(contact))))
          else ! 3D analytical drop shape
@@ -440,9 +441,9 @@ contains
          call time%increment()
          
          ! Implement slip condition for contact line modeling here
-         do while (CLsolver.ne.0.0_WP)!enable slip model for solver numbers >0
+         if (CLsolver.ne.0) then!enable slip model for solver numbers >0
             call contact_slip()
-         end do
+         end if
          ! Remember old VOF
          vf%VFold=vf%VF
          
@@ -496,9 +497,9 @@ contains
             call fs%update_laplacian()
             call fs%correct_mfr()
             call fs%get_div()
-            if (CLsolver.eq.0.0_WP) then
+            if (CLsolver.eq.0) then
                call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
-            else if (CLsolver.gt.0.0_WP) then
+            else if (CLsolver.gt.0) then
                call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)
             end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
@@ -571,7 +572,7 @@ contains
       ! Force use of new Beta Factor
       log_res_slip=log(1e9*fs%cfg%dx(1)*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
       Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
-      if (CLsolver.eq.1.0_WP) then
+      if (CLsolver.eq.1) then
          Beta_NS=1.0
       end if
 
