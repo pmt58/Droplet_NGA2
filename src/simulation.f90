@@ -570,7 +570,7 @@ contains
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
       ! Force use of new Beta Factor
-      log_res_slip=log(1e9*fs%cfg%dx(1)*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
+      log_res_slip=log(1e3*fs%cfg%dx(1)*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
       Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
       if (CLsolver.eq.1) then
          Beta_NS=1.0
@@ -592,7 +592,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! Apply slip velocity
-                     fs%U(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))
+                     fs%U(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
                   end if
                   ! Handle W-slip
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
@@ -601,7 +601,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! Apply slip velocity
-                     fs%W(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))
+                     fs%W(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
                   end if
                end if
                

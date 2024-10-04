@@ -4,7 +4,7 @@
 #($(seq 10 50))
 OH=(0.3) #(1e-3 1e-1)
 CL=(2) #1 2)
-Nele=(20 40 60)
+Nele=(20 25 30)
 #Beta=(0.06)
 #G=(0)
 
@@ -14,8 +14,8 @@ for o in ${!OH[@]}; do
       for n in ${!Nele[@]}; do
          echo "Running a simulation with Oh=${OH[$o]} CL=${CL[$c]} N=${Nele[$n]}"
          mpiexec -n 4 ./nga.dp.gnu.opt.mpi.exe -i input --Oh=${OH[$o]} --CLsolver=${CL[$c]} --nx=${Nele[$n]} --ny=${Nele[$n]} --nz=${Nele[$n]} >> result.txt
-         mkdir ./data3_${CL[$c]}_${o}_${n}
-         mv ./monitor/* ./data3_${CL[$c]}_${o}_${n}/
+         mkdir ./data1_${CL[$c]}_${o}_${n}
+         mv ./monitor/* ./data1_${CL[$c]}_${o}_${n}/
       done
    done
 done
