@@ -22,7 +22,7 @@ Gravity : 0 0 0
 # Time integration
 Max timestep size : 5e-3
 Max cfl number :    1.0
-Max time :          20
+Max time :          15
 
 # Pressure solver
 Pressure tolerance : 1e-6

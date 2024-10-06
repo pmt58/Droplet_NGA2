@@ -39,7 +39,7 @@ module simulation
    real(WP), dimension(3) :: Cdrop
    real(WP) :: Rdrop, Beta_NS
    integer :: CLsolver
-   real(WP) :: height,R_wet,CArad,CAdeg,CLvel,C,alpha
+   real(WP) :: height,R_wet,R_alpha,CArad,CAdeg,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
    type(monitor) :: ppfile
    
@@ -97,6 +97,7 @@ contains
       call MPI_ALLREDUCE(myR1,R1,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R1=sqrt(R1/Pi)
       call MPI_ALLREDUCE(myR2,R2,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R2=sqrt(R2/Pi)
       R_wet_old=R_wet
+      R_alpha=R1
       R_wet=2.0_WP*R1-R2
       if (time%t.eq.0.0_WP) then
          CLvel=0.0_WP
@@ -409,6 +410,7 @@ contains
          call ppfile%add_column(vf%VFint,'Total volume')
          call ppfile%add_column(height,'Drop height')
          call ppfile%add_column(R_wet,'Wetted radius')
+         call ppfile%add_column(R_alpha,'VoF radius')
          call ppfile%add_column(CLvel,'CL vel')
          call ppfile%add_column(CArad,'CA rad')
          call ppfile%add_column(CAdeg,'CA deg')
