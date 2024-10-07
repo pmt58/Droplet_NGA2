@@ -37,7 +37,7 @@ module simulation
    
    !> Problem definition and post-processing
    real(WP), dimension(3) :: Cdrop
-   real(WP) :: Rdrop, Beta_NS
+   real(WP) :: Rdrop,EQ_Area, Beta_NS
    integer :: CLsolver
    real(WP) :: height,R_wet,R_alpha,CArad,CAdeg,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
@@ -64,9 +64,10 @@ contains
       use string,    only: str_medium
       use mpi_f08,   only: MPI_ALLREDUCE,MPI_SUM
       use parallel,  only: MPI_REAL_WP
+      use param, only: param_read
       implicit none
       integer :: ierr,i,j,k,my_size
-      real(WP) :: my_height,myR1,R1,myR2,R2,R_wet_old
+      real(WP) :: my_height,myR1,R1,myR2,R2,R_wet_old,CA_ini
       real(WP), dimension(:), allocatable :: temp
       ! Post-process height of drop
       my_height=0.0_WP
@@ -96,9 +97,12 @@ contains
       end if
       call MPI_ALLREDUCE(myR1,R1,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R1=sqrt(R1/Pi)
       call MPI_ALLREDUCE(myR2,R2,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R2=sqrt(R2/Pi)
+      call param_read('CA',fs%contact_angle); fs%contact_angle=fs%contact_angle*Pi/180.0_WP; CA_ini=fs%contact_angle
+      EQ_Area=Pi*(sin(CA_ini)**2.0_WP)*(4/(2-(3*cos(CA_ini))+cos(CA_ini)**3.0_WP))**(2.0_WP/3.0_WP)
       R_wet_old=R_wet
-      R_alpha=R1
+      R_alpha=(Pi*R1**2.0_WP)/EQ_Area
       R_wet=2.0_WP*R1-R2
+      R_wet=(Pi*R_wet**2.0_WP)/EQ_Area
       if (time%t.eq.0.0_WP) then
          CLvel=0.0_WP
       else
@@ -109,6 +113,7 @@ contains
       ! Also attempt to get C and alpha on the fly
       alpha=time%t*CLvel/R_wet
       C=R_wet/(time%t**alpha)
+      
       ! Store time and amplitude series
       if (.not.allocated(all_time)) then
          my_size=0
@@ -207,7 +212,7 @@ contains
          integer :: i,j,k,n,si,sj,sk
          real(WP), dimension(3,8) :: cube_vertex
          real(WP), dimension(3) :: v_cent,a_cent
-         real(WP) :: vol,area,contact
+         real(WP) :: vol,area,contact,CA_ini
          integer, parameter :: amr_ref_lvl=4
          character(len=str_long) :: message
          ! Create a VOF solver
@@ -409,8 +414,8 @@ contains
          call ppfile%add_column(vf%VFmin,'VOF minimum')
          call ppfile%add_column(vf%VFint,'Total volume')
          call ppfile%add_column(height,'Drop height')
-         call ppfile%add_column(R_wet,'Wetted radius')
-         call ppfile%add_column(R_alpha,'VoF radius')
+         call ppfile%add_column(R_wet,'WetAreaFraction')
+         call ppfile%add_column(R_alpha,'VoF_WF')
          call ppfile%add_column(CLvel,'CL vel')
          call ppfile%add_column(CArad,'CA rad')
          call ppfile%add_column(CAdeg,'CA deg')
