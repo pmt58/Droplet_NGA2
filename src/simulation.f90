@@ -98,11 +98,13 @@ contains
       call MPI_ALLREDUCE(myR1,R1,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R1=sqrt(R1/Pi)
       call MPI_ALLREDUCE(myR2,R2,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R2=sqrt(R2/Pi)
       call param_read('CA',fs%contact_angle); fs%contact_angle=fs%contact_angle*Pi/180.0_WP; CA_ini=fs%contact_angle
-      EQ_Area=Pi*(sin(CA_ini)**2.0_WP)*(4/(2-(3*cos(CA_ini))+cos(CA_ini)**3.0_WP))**(2.0_WP/3.0_WP)
+      ! compute equilibrium wetted area
+      EQ_Area=Pi*(sin(CA_ini)**2.0_WP)*(4/(2-(3*cos(CA_ini))+(cos(CA_ini)**3.0_WP)))**(2.0_WP/3.0_WP)
       R_wet_old=R_wet
-      R_alpha=(Pi*R1**2.0_WP)/EQ_Area
       R_wet=2.0_WP*R1-R2
-      R_wet=(Pi*R_wet**2.0_WP)/EQ_Area
+      ! Convert radius to normalized Area
+      R_alpha=Pi*(R1**2.0_WP)/EQ_Area
+      R_wet=Pi*(R_wet**2.0_WP)/EQ_Area
       if (time%t.eq.0.0_WP) then
          CLvel=0.0_WP
       else
@@ -410,10 +412,10 @@ contains
          ppfile=monitor(fs%cfg%amRoot,'dropinfo')
          call ppfile%add_column(time%n,'Timestep number')
          call ppfile%add_column(time%t,'Time')
-         call ppfile%add_column(vf%VFmax,'VOF maximum')
-         call ppfile%add_column(vf%VFmin,'VOF minimum')
-         call ppfile%add_column(vf%VFint,'Total volume')
-         call ppfile%add_column(height,'Drop height')
+         call ppfile%add_column(vf%VFmax,'VOFmax')
+         call ppfile%add_column(vf%VFmin,'VOFmin')
+         call ppfile%add_column(vf%VFint,'Totalvol')
+         call ppfile%add_column(height,'Dropheight')
          call ppfile%add_column(R_wet,'WetAreaFraction')
          call ppfile%add_column(R_alpha,'VoF_WF')
          call ppfile%add_column(CLvel,'CL vel')
