@@ -377,7 +377,7 @@ contains
          call mfile%add_column(time%n,'Timestep number')
          call mfile%add_column(time%t,'Time')
          call mfile%add_column(time%dt,'Timestep size')
-         call mfile%add_column(time%cfl,'Maximum CFL')
+         call mfile%add_column(time%cfl,'Maximum_CFL')
          call mfile%add_column(fs%Umax,'Umax')
          call mfile%add_column(fs%Vmax,'Vmax')
          call mfile%add_column(fs%Wmax,'Wmax')
