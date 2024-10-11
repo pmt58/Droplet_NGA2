@@ -5,9 +5,9 @@ Partition : 2 1 2
 Lx : 5
 Ly : 5
 Lz : 5
-nx : 25
-ny : 25
-nz : 25
+nx : 50
+ny : 50
+nz : 50
 # Contact line solver type (0:noslip, 1:beta=1, 2:new beta relation)
 CLsolver : 2
 # Non-dimensional fluid properties
