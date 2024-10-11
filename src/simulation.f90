@@ -37,9 +37,9 @@ module simulation
    
    !> Problem definition and post-processing
    real(WP), dimension(3) :: Cdrop
-   real(WP) :: Rdrop,EQ_Area, Beta_NS
+   real(WP) :: Rdrop, EQ_R, Beta_NS
    integer :: CLsolver
-   real(WP) :: height,R_wet,R_alpha,CArad,CAdeg,CLvel,C,alpha
+   real(WP) :: height,R_wet,R_alpha,CArad,CAdeg,CA_ini,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
    type(monitor) :: ppfile
    
@@ -97,14 +97,14 @@ contains
       end if
       call MPI_ALLREDUCE(myR1,R1,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R1=sqrt(R1/Pi)
       call MPI_ALLREDUCE(myR2,R2,1,MPI_REAL_WP,MPI_SUM,vf%cfg%comm,ierr); R2=sqrt(R2/Pi)
-      call param_read('CA',fs%contact_angle); fs%contact_angle=fs%contact_angle*Pi/180.0_WP; CA_ini=fs%contact_angle
+      
       ! compute equilibrium wetted area
-      EQ_Area=Pi*(sin(CA_ini)**2.0_WP)*(4/(2-(3*cos(CA_ini))+(cos(CA_ini)**3.0_WP)))**(2.0_WP/3.0_WP)
+      
       R_wet_old=R_wet
       R_wet=2.0_WP*R1-R2
       ! Convert radius to normalized Area
-      R_alpha=Pi*(R1**2.0_WP)/EQ_Area
-      R_wet=Pi*(R_wet**2.0_WP)/EQ_Area
+      R_alpha=R1/EQ_R
+      R_wet=R_wet/EQ_R
       if (time%t.eq.0.0_WP) then
          CLvel=0.0_WP
       else
@@ -222,12 +222,14 @@ contains
          ! Prepare the analytical calculation of a sphere on a wall
          call param_read('Initial drop radius',Rdrop,default=1.0_WP)
          call param_read('Initial contact angle',contact,default=180.0_WP); contact=contact*Pi/180.0_WP
+         call param_read('CA',fs%contact_angle); fs%contact_angle=fs%contact_angle*Pi/180.0_WP; CA_ini=fs%contact_angle
          call param_read('Beta',Beta_NS,default=1.0_WP)
          call param_read('CLsolver',CLsolver,default=0)
          if (vf%cfg%nz.eq.1) then ! 2D analytical drop shape
             Rdrop=Rdrop*sqrt(Pi/(2.0_WP*(contact-sin(contact)*cos(contact))))
          else ! 3D analytical drop shape
             Rdrop=Rdrop*(4.0_WP/(2.0_WP-3.0_WP*cos(contact)+(cos(contact))**3))**(1.0_WP/3.0_WP)
+            EQ_R=sin(CA_ini)*(4.0_WP/(2.0_WP-(3.0_WP*cos(CA_ini))+(cos(CA_ini)**3.0_WP)))**(1.0_WP/3.0_WP)
          end if
          Cdrop=[0.0_WP,-Rdrop*cos(contact),0.0_WP]
          if (vf%cfg%amRoot) then
