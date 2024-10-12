@@ -67,7 +67,7 @@ contains
       use param, only: param_read
       implicit none
       integer :: ierr,i,j,k,my_size
-      real(WP) :: my_height,myR1,R1,myR2,R2,R_wet_old,CA_ini
+      real(WP) :: my_height,myR1,R1,myR2,R2,R_wet_old
       real(WP), dimension(:), allocatable :: temp
       ! Post-process height of drop
       my_height=0.0_WP
@@ -214,7 +214,7 @@ contains
          integer :: i,j,k,n,si,sj,sk
          real(WP), dimension(3,8) :: cube_vertex
          real(WP), dimension(3) :: v_cent,a_cent
-         real(WP) :: vol,area,contact,CA_ini
+         real(WP) :: vol,area,contact
          integer, parameter :: amr_ref_lvl=4
          character(len=str_long) :: message
          ! Create a VOF solver

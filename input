@@ -9,13 +9,13 @@ nx : 30
 ny : 30
 nz : 30
 # Contact line solver type (0:noslip, 1:beta=1, 2:new beta relation)
-CLsolver : 2
+CLsolver : 1
 # Non-dimensional fluid properties
 Density ratio :   1000
 Viscosity ratio : 50
 Oh : 2.0e-1    #<<< Oh=mu_l/sqrt(rho_l*R*sigma)
 CA : 60 #53.5
-Initial contact angle : 170
+Initial contact angle : 60
 Beta : 0
 Gravity : 0 0 0
 
