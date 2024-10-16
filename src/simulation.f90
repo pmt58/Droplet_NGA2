@@ -581,7 +581,7 @@ contains
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
       ! Force use of new Beta Factor
-      log_res_slip=log(1e3*fs%cfg%dx(1)*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
+      log_res_slip=log(1e5*fs%cfg%dx(1))!*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
       Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
       if (CLsolver.eq.1) then
          Beta_NS=1.0
