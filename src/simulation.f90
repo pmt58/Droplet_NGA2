@@ -3,7 +3,7 @@ module simulation
    use precision,         only: WP
    use geometry,          only: cfg
    use hypre_str_class,   only: hypre_str
-   use ddadi_class,       only: ddadi
+   ! use ddadi_class,       only: ddadi
    use tpns_class,        only: tpns
    use vfs_class,         only: vfs
    use timetracker_class, only: timetracker
@@ -16,7 +16,8 @@ module simulation
    
    !> Single two-phase flow solver and volume fraction solver and corresponding time tracker
    type(hypre_str),   public :: ps
-   type(ddadi),       public :: vs
+   ! type(ddadi),       public :: vs
+   type(hypre_str),   public :: vs
    type(tpns),        public :: fs
    type(vfs),         public :: vf
    type(timetracker), public :: time
@@ -316,7 +317,9 @@ contains
          call param_read('Pressure iteration',ps%maxit)
          call param_read('Pressure tolerance',ps%rcvg)
          ! Configure implicit velocity solver
-         vs=ddadi(cfg=cfg,name='Velocity',nst=7)
+         ! vs=ddadi(cfg=cfg,name='Velocity',nst=7)
+         vs=hypre_str(cfg=cfg,name='Velocity',method=pcg_pfmg2,nst=7)
+         vs%maxlevel=ps%maxlevel; vs%maxit=ps%maxit; vs%rcvg=ps%rcvg
          ! Setup the solver
          call fs%setup(pressure_solver=ps,implicit_solver=vs)
          ! Zero initial field
@@ -584,7 +587,7 @@ contains
       log_res_slip=log(1e5*fs%cfg%dx(1))!*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
       Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
       if (CLsolver.eq.1) then
-         Beta_NS=1.0
+         Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3)
       end if
 
       ! Loop over domain and identify cells that require contact angle model
