@@ -38,7 +38,7 @@ module simulation
    
    !> Problem definition and post-processing
    real(WP), dimension(3) :: Cdrop
-   real(WP) :: Rdrop, EQ_R, Beta_NS
+   real(WP) :: Rdrop, EQ_R, Beta_NS, L_slip
    integer :: CLsolver
    real(WP) :: height,R_wet,R_alpha,CArad,CAdeg,CA_ini,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
@@ -127,6 +127,13 @@ contains
       allocate(temp(my_size+1)); temp(1:my_size)=all_rwet; temp(my_size+1)=R_wet ; call MOVE_ALLOC(temp,all_rwet)
    end subroutine postproc_data
    
+   function my_log(x) result(y)
+      implicit none
+      real(WP), intent(in) :: x
+      real(WP) :: y
+      ! Do log
+      y = log(x)
+   end function my_log
    
    !> Function that localizes the top (x+) of the domain
    function xp_locator(pg,i,j,k) result(isIn)
@@ -180,7 +187,7 @@ contains
    subroutine simulation_init
       use param, only: param_read
       implicit none
-      
+
 
       ! Allocate work arrays
       allocate_work_arrays: block
@@ -224,7 +231,6 @@ contains
          call param_read('Initial drop radius',Rdrop,default=1.0_WP)
          call param_read('Initial contact angle',contact,default=180.0_WP); contact=contact*Pi/180.0_WP
          call param_read('CA',fs%contact_angle); fs%contact_angle=fs%contact_angle*Pi/180.0_WP; CA_ini=fs%contact_angle
-         call param_read('Beta',Beta_NS,default=1.0_WP)
          call param_read('CLsolver',CLsolver,default=0)
          if (vf%cfg%nz.eq.1) then ! 2D analytical drop shape
             Rdrop=Rdrop*sqrt(Pi/(2.0_WP*(contact-sin(contact)*cos(contact))))
@@ -327,6 +333,12 @@ contains
          ! Calculate cell-centered velocities and divergence
          call fs%interp_vel(Ui,Vi,Wi)
          call fs%get_div()
+         ! Force use of new Beta Factor
+         call param_read('Slip Length',L_slip,default=1.0_WP);L_slip=1.0_WP/L_slip
+         Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*my_log(L_slip*fs%cfg%dx(1))*fs%visc_l)!fs%cfg%dx(1)
+         if (CLsolver.eq.1) then
+            call param_read('Beta',Beta_NS,default=1.0_WP)!Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*fs%visc_l)
+         end if
       end block create_and_initialize_flow_solver
       
       
@@ -580,15 +592,8 @@ contains
       integer :: i,j,k
       real(WP), dimension(3) :: nw
       real(WP) :: mysurf,mycos,cos_contact_angle
-      real(WP) :: log_res_slip
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
-      ! Force use of new Beta Factor
-      log_res_slip=log(1e5*fs%cfg%dx(1))!*fs%visc_l**2)  !fs%cfg%dx(1,1,1)*1e9   ... is an array
-      Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*log_res_slip*fs%visc_l)
-      if (CLsolver.eq.1) then
-         Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3)
-      end if
 
       ! Loop over domain and identify cells that require contact angle model
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1

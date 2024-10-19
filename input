@@ -5,24 +5,25 @@ Partition : 2 1 2
 Lx : 5
 Ly : 5
 Lz : 5
-nx : 40
-ny : 40
-nz : 40
+nx : 32
+ny : 32
+nz : 32
 # Contact line solver type (0:noslip, 1:beta=1, 2:new beta relation)
-CLsolver : 1
+CLsolver : 2
 Beta : 1
 # Non-dimensional fluid properties
 Density ratio :   1000
 Viscosity ratio : 50
 Oh : 1.0e-1    #<<< Oh=mu_l/sqrt(rho_l*R*sigma)
 CA : 60 #53.5
-Initial contact angle : 150
+Initial contact angle : 160
 Gravity : 0 0 0
+Slip Length : 1e-5
 
 # Time integration
-Max timestep size : 1e-4
+Max timestep size : 1e-3
 Max cfl number :    0.5
-Max time :          10
+Max time :          15
 
 # Pressure solver
 Pressure tolerance : 1e-6
