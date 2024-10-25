@@ -13,7 +13,7 @@ for o in ${!OH[@]}; do
    for c in ${!CL[@]}; do
       for n in ${!Nele[@]}; do
          echo "Running a simulation with Oh=${OH[$o]} CL=${CL[$c]} N=${Nele[$n]}"
-         mpiexec -n 6 ./nga.dp.gnu.opt.mpi.exe -i input --Oh=${OH[$o]} --CLsolver=${CL[$c]} --nx=${Nele[$n]} --ny=${Nele[$n]} --nz=${Nele[$n]} >> result.txt
+         mpiexec -n 4 ./nga.dp.gnu.opt.mpi.exe -i input --Oh=${OH[$o]} --CLsolver=${CL[$c]} --nx=${Nele[$n]} --ny=${Nele[$n]} --nz=${Nele[$n]} >> result.txt
          mkdir ./data1_${CL[$c]}_${o}_${n}
          mv ./monitor/* ./data1_${CL[$c]}_${o}_${n}/
       done
