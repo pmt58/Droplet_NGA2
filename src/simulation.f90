@@ -457,6 +457,7 @@ contains
    subroutine simulation_run
       use tpns_class, only: static_contact,arithmetic_visc
       implicit none
+      integer :: i,j,k
       
       ! Perform time integration
       do while (.not.time%done())
@@ -484,6 +485,24 @@ contains
          ! VOF solver step
          call vf%advance(dt=time%dt,U=fs%U,V=fs%V,W=fs%W)
          
+         !Reset velocity in the wall
+         do k=fs%cfg%kmin_,fs%cfg%kmax_+1
+            do j=fs%cfg%jmin_,fs%cfg%jmax_+1
+               do i=fs%cfg%imin_,fs%cfg%imax_+1
+                  ! Check if there is a wall in y-
+                  if (fs%mask(i,j-1,k).eq.1) then
+                     fs%U(i,j-1,k)=0.0_WP 
+                     fs%W(i,j-1,k)=0.0_WP 
+                  end if
+               end do
+            end do
+         end do
+
+         ! Remember old velocity
+         fs%Uold=fs%U
+         fs%Vold=fs%V
+         fs%Wold=fs%W
+
          ! Prepare new staggered viscosity (at n+1)
          call fs%get_viscosity(vf=vf,strat=arithmetic_visc)
          
@@ -523,11 +542,12 @@ contains
             call fs%update_laplacian()
             call fs%correct_mfr()
             call fs%get_div()
-            if (CLsolver.eq.0) then
-               call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
-            else if (CLsolver.gt.0) then
-               call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)
-            end if
+            ! Remove Surface tension in NS
+            ! if (CLsolver.eq.0) then
+            !   call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
+            !else if (CLsolver.gt.0) then
+            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)
+            !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
             fs%psolv%sol=0.0_WP
             call fs%psolv%solve()
@@ -553,7 +573,7 @@ contains
          if (ens_evt%occurs()) then
             update_smesh: block
                use irl_fortran_interface
-               integer :: i,j,k,np,nplane
+               integer :: np,nplane
                call vf%update_surfmesh(smesh)
                np=0
                do k=vf%cfg%kmin_,vf%cfg%kmax_
@@ -599,11 +619,14 @@ contains
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
-               
+
                ! Check if there is a wall in y-
-               if (fs%mask(i,j-1,k).eq.1.and.fs%mask(i-1,j-1,k).eq.1) then
+               if (fs%mask(i,j-1,k).eq.1) then
                   ! Define wall normal
                   nw=[0.0_WP,+1.0_WP,0.0_WP]
+                  ! start from no slip
+                  fs%U(i,j-1,k)=0.0_WP 
+                  fs%W(i,j-1,k)=0.0_WP 
                   ! Handle U-slip
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
