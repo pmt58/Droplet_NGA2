@@ -458,6 +458,7 @@ contains
       use tpns_class, only: static_contact,arithmetic_visc
       implicit none
       integer :: i,j,k
+      real(WP), dimension(3) :: nw
       
       ! Perform time integration
       do while (.not.time%done())
@@ -521,7 +522,22 @@ contains
             call fs%get_dmomdt(resU,resV,resW)
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
-            
+            ! Add SGS stress in cells with CL model
+            do k=fs%cfg%kmin_,fs%cfg%kmax_+1
+               do j=fs%cfg%jmin_,fs%cfg%jmax_+1
+                  do i=fs%cfg%imin_,fs%cfg%imax_+1
+                     ! Check if there is a wall in y-
+                     if (fs%mask(i,j-1,k).eq.1) then
+                        ! Define wall normal
+                        nw=[0.0_WP,+1.0_WP,0.0_WP]
+                        resU=resU+0.0_WP
+                        resV=resV+0.0_WP
+                        resW=resW+0.0_WP
+                     end if
+                  end do
+               end do
+            end do
+
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
             resV=-2.0_WP*fs%rho_V*fs%V+(fs%rho_Vold+fs%rho_V)*fs%Vold+time%dt*resV
