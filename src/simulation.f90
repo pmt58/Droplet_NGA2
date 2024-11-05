@@ -523,7 +523,7 @@ contains
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
             call add_SGS_ST()
-            call add_SGS_shear()
+            !call add_SGS_shear(resU,resV,resW)
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
@@ -658,7 +658,6 @@ contains
    
    !> Subroutine that updates the slip velocity based on contact line model
    subroutine add_SGS_shear()
-      use irl_fortran_interface
       implicit none
       integer :: i,j,k
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
@@ -666,9 +665,8 @@ contains
             do i=fs%cfg%imin_,fs%cfg%imax_+1
                ! Check if there is a wall in y-
                if (fs%mask(i,j-1,k).eq.1) then
-                  resU=resU
-                  resV=resV
-                  resW=resW
+                  resU(i,j,k)=resU(i,j,k)+0.0_WP
+                  resW(i,j,k)=resW(i,j,k)+0.0_WP
                end if 
             end do
          end do
@@ -677,17 +675,16 @@ contains
 
    !> Subroutine that updates the slip velocity based on contact line model
    subroutine add_SGS_ST()
-      use irl_fortran_interface
       implicit none
       integer :: i,j,k
+      !class(tpns), intent(inout) :: this
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
                ! Check if there is a wall in y-
                if (fs%mask(i,j-1,k).eq.1) then
-                  resU=resU
-                  resV=resV
-                  resW=resW
+                  resU(i,j,k)=resU(i,j,k)+0.0_WP
+                  resW(i,j,k)=resW(i,j,k)+0.0_WP
                end if 
             end do
          end do
