@@ -517,26 +517,13 @@ contains
             
             ! Preliminary mass and momentum transport step at the interface
             call fs%prepare_advection_upwind(dt=time%dt)
-            
             ! Explicit calculation of drho*u/dt from NS
             call fs%get_dmomdt(resU,resV,resW)
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            do k=fs%cfg%kmin_,fs%cfg%kmax_+1
-               do j=fs%cfg%jmin_,fs%cfg%jmax_+1
-                  do i=fs%cfg%imin_,fs%cfg%imax_+1
-                     ! Check if there is a wall in y-
-                     if (fs%mask(i,j-1,k).eq.1) then
-                        ! Define wall normal
-                        nw=[0.0_WP,+1.0_WP,0.0_WP]
-                        resU=resU+0.0_WP
-                        resV=resV+0.0_WP
-                        resW=resW+0.0_WP
-                     end if
-                  end do
-               end do
-            end do
+            call add_SGS_ST()
+            call add_SGS_shear()
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
@@ -644,8 +631,8 @@ contains
                   fs%U(i,j-1,k)=0.0_WP 
                   fs%W(i,j-1,k)=0.0_WP 
                   ! Handle U-slip
-                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
+                     mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
@@ -653,8 +640,8 @@ contains
                      fs%U(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
                   end if
                   ! Handle W-slip
-                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
+                     mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
@@ -669,6 +656,45 @@ contains
       
    end subroutine contact_slip
    
+   !> Subroutine that updates the slip velocity based on contact line model
+   subroutine add_SGS_shear()
+      use irl_fortran_interface
+      implicit none
+      integer :: i,j,k
+      do k=fs%cfg%kmin_,fs%cfg%kmax_+1
+         do j=fs%cfg%jmin_,fs%cfg%jmax_+1
+            do i=fs%cfg%imin_,fs%cfg%imax_+1
+               ! Check if there is a wall in y-
+               if (fs%mask(i,j-1,k).eq.1) then
+                  resU=resU
+                  resV=resV
+                  resW=resW
+               end if 
+            end do
+         end do
+      end do
+   end subroutine add_SGS_shear
+
+   !> Subroutine that updates the slip velocity based on contact line model
+   subroutine add_SGS_ST()
+      use irl_fortran_interface
+      implicit none
+      integer :: i,j,k
+      do k=fs%cfg%kmin_,fs%cfg%kmax_+1
+         do j=fs%cfg%jmin_,fs%cfg%jmax_+1
+            do i=fs%cfg%imin_,fs%cfg%imax_+1
+               ! Check if there is a wall in y-
+               if (fs%mask(i,j-1,k).eq.1) then
+                  resU=resU
+                  resV=resV
+                  resW=resW
+               end if 
+            end do
+         end do
+      end do
+   end subroutine add_SGS_ST
+
+
    !> Finalize the NGA2 simulation
    subroutine simulation_final
       implicit none
