@@ -631,8 +631,8 @@ contains
                   fs%U(i,j-1,k)=0.0_WP 
                   fs%W(i,j-1,k)=0.0_WP 
                   ! Handle U-slip
+                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
-                     mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
@@ -640,8 +640,8 @@ contains
                      fs%U(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
                   end if
                   ! Handle W-slip
+                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
-                     mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
@@ -658,15 +658,30 @@ contains
    
    !> Subroutine that updates the slip velocity based on contact line model
    subroutine add_SGS_shear()
+      use irl_fortran_interface
       implicit none
       integer :: i,j,k
+      real(WP), dimension(3) :: nw
+      real(WP) :: mysurf,mycos,cos_contact_angle
+      ! Precalculate cos(contact angle)
+      cos_contact_angle=cos(fs%contact_angle)
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
                ! Check if there is a wall in y-
                if (fs%mask(i,j-1,k).eq.1) then
-                  resU(i,j,k)=resU(i,j,k)+0.0_WP
-                  resW(i,j,k)=resW(i,j,k)+0.0_WP
+                  ! Define wall normal
+                  nw=[0.0_WP,+1.0_WP,0.0_WP]
+                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
+                  ! x comp - SGS shear
+                  if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
+                     resU(i,j,k)=resU(i,j,k)+0.0_WP
+                  endif
+                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
+                  ! z comp - SGS shear
+                  if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
+                     resW(i,j,k)=resW(i,j,k)+0.0_WP
+                  endif
                end if 
             end do
          end do
@@ -675,14 +690,20 @@ contains
 
    !> Subroutine that updates the slip velocity based on contact line model
    subroutine add_SGS_ST()
+      use irl_fortran_interface
       implicit none
       integer :: i,j,k
+      real(WP), dimension(3) :: nw
+      real(WP) :: mysurf,mycos,cos_contact_angle
+      ! Precalculate cos(contact angle)
+      cos_contact_angle=cos(fs%contact_angle)
       !class(tpns), intent(inout) :: this
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
                ! Check if there is a wall in y-
                if (fs%mask(i,j-1,k).eq.1) then
+                  nw=[0.0_WP,+1.0_WP,0.0_WP]
                   resU(i,j,k)=resU(i,j,k)+0.0_WP
                   resW(i,j,k)=resW(i,j,k)+0.0_WP
                end if 
