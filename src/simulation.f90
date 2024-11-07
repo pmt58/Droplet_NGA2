@@ -675,12 +675,12 @@ contains
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS shear
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
-                     resU(i,j,k)=resU(i,j,k)+0.0_WP
+                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)**2*tan(fs%contact_angle)))
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
-                     resW(i,j,k)=resW(i,j,k)+0.0_WP
+                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)**2*tan(fs%contact_angle)))
                   endif
                end if 
             end do
@@ -703,10 +703,19 @@ contains
             do i=fs%cfg%imin_,fs%cfg%imax_+1
                ! Check if there is a wall in y-
                if (fs%mask(i,j-1,k).eq.1) then
+                  ! Define wall normal
                   nw=[0.0_WP,+1.0_WP,0.0_WP]
-                  resU(i,j,k)=resU(i,j,k)+0.0_WP
-                  resW(i,j,k)=resW(i,j,k)+0.0_WP
-               end if 
+                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
+                  ! x comp - SGS shear
+                  if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
+                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)**2*tan(fs%contact_angle)))
+                  endif
+                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
+                  ! z comp - SGS shear
+                  if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
+                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)**2*tan(fs%contact_angle)))
+                  endif
+               end if
             end do
          end do
       end do
