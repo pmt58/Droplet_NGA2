@@ -522,7 +522,7 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            call add_SGS_ST()
+            ! call add_SGS_ST()
             call add_SGS_shear()
 
             ! Assemble explicit residual
@@ -549,7 +549,7 @@ contains
             ! if (CLsolver.eq.0) then
             !   call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             !else if (CLsolver.gt.0) then
-            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)
+            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
             fs%psolv%sol=0.0_WP
