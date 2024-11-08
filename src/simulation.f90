@@ -694,10 +694,9 @@ contains
       implicit none
       integer :: i,j,k
       real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,cos_contact_angle
+      real(WP) :: mysurf,mycos,cos_contact_angle,uslip,wslip
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
-      !class(tpns), intent(inout) :: this
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
@@ -706,14 +705,28 @@ contains
                   ! Define wall normal
                   nw=[0.0_WP,+1.0_WP,0.0_WP]
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
-                  ! x comp - SGS shear
+                  ! x comp - SGS ST
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
-                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)**2*tan(fs%contact_angle)))
+                     ! Surface-averaged local cos(CA)
+                     mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
+                     &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
+                     ! Apply x SGS youngs force
+                     resU(i,j,k)=resU(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
+                     ! Apply x SGS ST
+                     uslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
+                     resU(i,j,k)=resU(i,j,k)+3.0_WP*uslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dx(i))/(fs%sigma*fs%contact_angle**2.0_WP)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
-                  ! z comp - SGS shear
+                  ! z comp - SGS ST
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
-                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)**2*tan(fs%contact_angle)))
+                     ! Surface-averaged local cos(CA)
+                     mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
+                     &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
+                     ! Apply z SGS youngs force
+                     resW(i,j,k)=resW(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
+                     ! Apply z SGS ST
+                     wslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
+                     resW(i,j,k)=resW(i,j,k)+3.0_WP*wslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dz(k))/(fs%sigma*fs%contact_angle**2.0_WP)
                   endif
                end if
             end do
