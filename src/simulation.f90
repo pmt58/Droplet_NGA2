@@ -714,7 +714,7 @@ contains
                      resU(i,j,k)=resU(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
                      ! Apply x SGS ST
                      uslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
-                     resU(i,j,k)=resU(i,j,k)+3.0_WP*uslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dx(i))/(fs%sigma*fs%contact_angle**2.0_WP)
+                     resU(i,j,k)=resU(i,j,k)-3.0_WP*uslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dx(i))/(fs%sigma*fs%contact_angle**2.0_WP)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS ST
@@ -726,7 +726,7 @@ contains
                      resW(i,j,k)=resW(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
                      ! Apply z SGS ST
                      wslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
-                     resW(i,j,k)=resW(i,j,k)+3.0_WP*wslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dz(k))/(fs%sigma*fs%contact_angle**2.0_WP)
+                     resW(i,j,k)=resW(i,j,k)-3.0_WP*wslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dz(k))/(fs%sigma*fs%contact_angle**2.0_WP)
                   endif
                end if
             end do
