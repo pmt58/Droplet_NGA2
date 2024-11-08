@@ -523,7 +523,7 @@ contains
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
             call add_SGS_ST()
-            !call add_SGS_shear(resU,resV,resW)
+            call add_SGS_shear()
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
