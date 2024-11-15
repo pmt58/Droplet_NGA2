@@ -522,7 +522,7 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            ! call add_SGS_ST()
+            call add_SGS_ST()
             call add_SGS_shear()
 
             ! Assemble explicit residual
@@ -549,7 +549,7 @@ contains
             ! if (CLsolver.eq.0) then
             !   call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             !else if (CLsolver.gt.0) then
-            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
+            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)!,contact_model=static_contact)
             !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
             fs%psolv%sol=0.0_WP
@@ -675,14 +675,14 @@ contains
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS shear
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
-                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)**2*tan(fs%contact_angle)))*&
-                     & fs%cfg%dx(i)*fs%cfg%dy(j)*fs%cfg%dz(k)*vf%VF(i,j,k)
+                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)*tan(fs%contact_angle)))*&
+                     & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
-                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)**2*tan(fs%contact_angle)))*&
-                     & fs%cfg%dx(i)*fs%cfg%dy(j)*fs%cfg%dz(k)*vf%VF(i,j,k)
+                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)*tan(fs%contact_angle)))*&
+                     & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(i))
                   endif
                end if 
             end do
