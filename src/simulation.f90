@@ -522,7 +522,7 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            call add_SGS_ST()
+            ! call add_SGS_ST()
             call add_SGS_shear()
 
             ! Assemble explicit residual
@@ -549,7 +549,7 @@ contains
             ! if (CLsolver.eq.0) then
             !   call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             !else if (CLsolver.gt.0) then
-            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)!,contact_model=static_contact)
+            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
             fs%psolv%sol=0.0_WP
@@ -696,8 +696,15 @@ contains
       implicit none
       integer :: i,j,k
       real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,cos_contact_angle,uslip,wslip
+      real(WP) :: mysurf,mycos,sin_contact_angle,cos_contact_angle,uslip,wslip
+      real(WP), dimension(:,:,:), allocatable :: GFM
+      real(WP), dimension(2) :: fvof
+      ! Allocate and zero out binarized VF for GFM-style jump distribution
+      allocate(GFM(fs%cfg%imino_:fs%cfg%imaxo_,fs%cfg%jmino_:fs%cfg%jmaxo_,fs%cfg%kmino_:fs%cfg%kmaxo_)); GFM=0.0_WP
+      ! Prepare a GFM-based strategy
+      GFM=real(nint(vf%VF),WP)
       ! Precalculate cos(contact angle)
+      sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
@@ -709,26 +716,30 @@ contains
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS ST
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
+                     ! Compute the liquid area fractions from GFM
+                     fvof=GFM(i-1:i,j,k)
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! Apply x SGS youngs force
-                     resU(i,j,k)=resU(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
+                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))*sum(fs%divu_x(:,i,j,k)*fvof(:))
                      ! Apply x SGS ST
                      uslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
-                     resU(i,j,k)=resU(i,j,k)-3.0_WP*uslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dx(i))/(fs%sigma*fs%contact_angle**2.0_WP)
+                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)-3.0_WP*uslip*fs%visc_l*sin_contact_angle*my_log(L_slip*fs%cfg%dx(i))/(fs%sigma*(fs%contact_angle**2.0_WP)*fs%cfg%dx(i))*sum(fs%divu_x(:,i,j,k)*fvof(:))
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS ST
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
+                     ! Compute the liquid area fractions from GFM
+                     fvof=GFM(i,j,k-1:k)
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! Apply z SGS youngs force
-                     resW(i,j,k)=resW(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
+                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k)*fs%cfg%dx(i))*sum(fs%divw_z(:,i,j,k)*fvof(:))
                      ! Apply z SGS ST
                      wslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
-                     resW(i,j,k)=resW(i,j,k)-3.0_WP*wslip*fs%visc_l*sin(fs%contact_angle)*my_log(L_slip*fs%cfg%dz(k))/(fs%sigma*fs%contact_angle**2.0_WP)
+                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)-3.0_WP*wslip*fs%visc_l*sin_contact_angle*my_log(L_slip*fs%cfg%dz(k))/(fs%sigma*(fs%contact_angle**2.0_WP)*fs%cfg%dx(i))*sum(fs%divw_z(:,i,j,k)*fvof(:))
                   endif
                end if
             end do
