@@ -662,9 +662,10 @@ contains
       implicit none
       integer :: i,j,k
       real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,cos_contact_angle
+      real(WP) :: mysurf,mycos,cos_contact_angle,tan_contact_angle
       ! Precalculate cos(contact angle)
       cos_contact_angle=cos(fs%contact_angle)
+      tan_contact_angle=tan(fs%contact_angle)
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
@@ -675,14 +676,14 @@ contains
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS shear
                   if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
-                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)*tan(fs%contact_angle)))*&
-                     & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
+                     resU(i,j,k)=resU(i,j,k)+(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)*tan_contact_angle))*&
+                     & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*fs%cfg%dx(i)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
                   if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
-                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)*tan(fs%contact_angle)))*&
-                     & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(i))
+                     resW(i,j,k)=resW(i,j,k)+(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)*tan_contact_angle))*&
+                     & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dz(i)
                   endif
                end if 
             end do
@@ -696,7 +697,7 @@ contains
       implicit none
       integer :: i,j,k
       real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,sin_contact_angle,cos_contact_angle,uslip,wslip
+      real(WP) :: mysurf,mycos,sin_contact_angle,cos_contact_angle,tan_contact_angle,uslip,wslip
       real(WP), dimension(:,:,:), allocatable :: GFM
       real(WP), dimension(2) :: fvof
       ! Allocate and zero out binarized VF for GFM-style jump distribution
@@ -706,6 +707,8 @@ contains
       ! Precalculate cos(contact angle)
       sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
+      tan_contact_angle=tan(fs%contact_angle)
+
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
@@ -715,25 +718,25 @@ contains
                   nw=[0.0_WP,+1.0_WP,0.0_WP]
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS ST
-                  if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
+                  if (mysurf.gt.0.0_WP) then
                      ! Compute the liquid area fractions from GFM
                      fvof=GFM(i-1:i,j,k)
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
-                     ! Apply x SGS youngs force
-                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))*sum(fs%divu_x(:,i,j,k)*fvof(:))
+                     ! Apply x CL youngs force
+                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)-fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*fvof(:))/fs%cfg%dy(j)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS ST
-                  if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
+                  if (mysurf.gt.0.0_WP) then
                      ! Compute the liquid area fractions from GFM
                      fvof=GFM(i,j,k-1:k)
                      ! Surface-averaged local cos(CA)
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
-                     ! Apply z SGS youngs force
-                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k)*fs%cfg%dx(i))*sum(fs%divw_z(:,i,j,k)*fvof(:))
+                     ! Apply z CL youngs force
+                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)-fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*fvof(:))/fs%cfg%dy(j)
                   endif
                end if
             end do
