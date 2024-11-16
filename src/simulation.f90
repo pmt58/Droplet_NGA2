@@ -522,7 +522,7 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            ! call add_SGS_ST()
+            call add_CL_ST()
             call add_SGS_shear()
 
             ! Assemble explicit residual
@@ -549,7 +549,7 @@ contains
             ! if (CLsolver.eq.0) then
             !   call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             !else if (CLsolver.gt.0) then
-            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
+            call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)!,contact_model=static_contact)
             !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
             fs%psolv%sol=0.0_WP
@@ -691,7 +691,7 @@ contains
    end subroutine add_SGS_shear
 
    !> Subroutine that updates the slip velocity based on contact line model
-   subroutine add_SGS_ST()
+   subroutine add_CL_ST()
       use irl_fortran_interface
       implicit none
       integer :: i,j,k
@@ -723,9 +723,6 @@ contains
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! Apply x SGS youngs force
                      fs%Pjz(i,j,k)=fs%Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))*sum(fs%divu_x(:,i,j,k)*fvof(:))
-                     ! Apply x SGS ST
-                     uslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
-                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)-3.0_WP*uslip*fs%visc_l*sin_contact_angle*my_log(L_slip*fs%cfg%dx(i))/(fs%sigma*(fs%contact_angle**2.0_WP)*fs%cfg%dx(i))*sum(fs%divu_x(:,i,j,k)*fvof(:))
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS ST
@@ -737,15 +734,12 @@ contains
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! Apply z SGS youngs force
                      fs%Pjz(i,j,k)=fs%Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k)*fs%cfg%dx(i))*sum(fs%divw_z(:,i,j,k)*fvof(:))
-                     ! Apply z SGS ST
-                     wslip=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
-                     fs%Pjz(i,j,k)=fs%Pjz(i,j,k)-3.0_WP*wslip*fs%visc_l*sin_contact_angle*my_log(L_slip*fs%cfg%dz(k))/(fs%sigma*(fs%contact_angle**2.0_WP)*fs%cfg%dx(i))*sum(fs%divw_z(:,i,j,k)*fvof(:))
                   endif
                end if
             end do
          end do
       end do
-   end subroutine add_SGS_ST
+   end subroutine add_CL_ST
 
 
    !> Finalize the NGA2 simulation
