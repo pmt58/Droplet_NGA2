@@ -356,10 +356,10 @@ contains
          integer :: i,j,k,np,nplane
          smesh=surfmesh(nvar=5,name='plic')
          smesh%varname(1)='curv'
-         smesh%varname(2)='SGS_shear_x'
-         smesh%varname(3)='SGS_shear_y'
-         smesh%varname(4)='SGS_shear_z'
-         smesh%varname(5)='CL_Pjz'
+         smesh%varname(2)='SGSshearx'
+         smesh%varname(3)='SGSsheary'
+         smesh%varname(4)='SGSshearz'
+         smesh%varname(5)='CLPjz'
          call vf%update_surfmesh(smesh)
          np=0
          do k=vf%cfg%kmin_,vf%cfg%kmax_
@@ -393,9 +393,9 @@ contains
          call ens_out%add_vector('velocity',Ui,Vi,Wi)
          call ens_out%add_scalar('VOF',vf%VF)
          call ens_out%add_scalar('curvature',vf%curv)
-         call ens_out%add_scalar('SGS_shear_x',SGSresU)
-         call ens_out%add_scalar('SGS_shear_y',SGSresV)
-         call ens_out%add_scalar('SGS_shear_z',SGSresW)
+         call ens_out%add_scalar('SGSshearx',SGSresU)
+         call ens_out%add_scalar('SGSsheary',SGSresV)
+         call ens_out%add_scalar('SGSshearz',SGSresW)
          call ens_out%add_scalar('CL',CL_Pjz)
          call ens_out%add_surface('vofplic',smesh)
          ! Output to ensight
@@ -710,14 +710,14 @@ contains
                   nw=[0.0_WP,+1.0_WP,0.0_WP]
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS shear
-                  if (mysurf.gt.0.0_WP.and.fs%umask(i,j,k).eq.0) then
-                     SGSresU(i,j,k)=(2*fs%U(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)*tan_contact_angle))*&
+                  if (mysurf.gt.0.0_WP) then
+                     SGSresU(i,j,k)=(2*abs(fs%U(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)*tan_contact_angle))*&
                      & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*fs%cfg%dx(i)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
-                  if (mysurf.gt.0.0_WP.and.fs%wmask(i,j,k).eq.0) then
-                     SGSresW(i,j,k)=(2*fs%W(1,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)*tan_contact_angle))*&
+                  if (mysurf.gt.0.0_WP) then
+                     SGSresW(i,j,k)=(2*abs(fs%W(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)*tan_contact_angle))*&
                      & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dz(i)
                   endif
                end if 
