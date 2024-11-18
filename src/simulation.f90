@@ -542,7 +542,7 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            call add_CL_ST()
+            ! call add_CL_ST()
             call add_SGS_shear()
 
             ! Shear Residuals
