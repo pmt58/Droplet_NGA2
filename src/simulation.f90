@@ -575,6 +575,7 @@ contains
                call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             else if (CLsolver.gt.0) then
                call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)!,contact_model=static_contact)
+               call add_CL_ST()
             endif
             ! Apply Contact line Pressure jump from subroutine
             fs%Pjz=fs%Pjz+CL_Pjz
@@ -738,7 +739,7 @@ contains
       ! Allocate and zero out binarized VF for GFM-style jump distribution
       allocate(GFM(fs%cfg%imino_:fs%cfg%imaxo_,fs%cfg%jmino_:fs%cfg%jmaxo_,fs%cfg%kmino_:fs%cfg%kmaxo_)); GFM=0.0_WP
       ! Prepare a GFM-based strategy
-      GFM=real(nint(vf%VF),WP)
+      GFM=vf%VF!real(nint(vf%VF),WP)
       ! Precalculate cos(contact angle)
       sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
@@ -761,7 +762,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! Apply x CL youngs force
-                     CL_Pjz(i,j,k)=CL_Pjz(i,j,k)-fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*fvof(:))/fs%cfg%dy(j)
+                     CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*fvof(:)))*fs%cfg%dy(j)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS ST
@@ -772,7 +773,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! Apply z CL youngs force
-                     CL_Pjz(i,j,k)=CL_Pjz(i,j,k)-fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*fvof(:))/fs%cfg%dy(j)
+                     CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*fvof(:)))*fs%cfg%dy(j)
                   endif
                end if
             end do
