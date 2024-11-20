@@ -36,6 +36,7 @@ module simulation
    real(WP), dimension(:,:,:), allocatable :: resU,resV,resW
    real(WP), dimension(:,:,:), allocatable :: Ui,Vi,Wi
    real(WP), dimension(:,:,:), allocatable :: SGSresU,SGSresV,SGSresW
+   real(WP), dimension(:,:,:), allocatable :: CLresU,CLresV,CLresW
    real(WP), dimension(:,:,:), allocatable :: CL_Pjz
    
    !> Problem definition and post-processing
@@ -203,6 +204,10 @@ contains
          allocate(SGSresU(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
          allocate(SGSresV(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
          allocate(SGSresW(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
+         ! New allocation for SGS contributions
+         allocate(CLresU(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
+         allocate(CLresV(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
+         allocate(CLresW(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
          ! Allocate Contact line model
          allocate(CL_Pjz(cfg%imino_:cfg%imaxo_,cfg%jmino_:cfg%jmaxo_,cfg%kmino_:cfg%kmaxo_))
       end block allocate_work_arrays
@@ -354,12 +359,15 @@ contains
       create_smesh: block
          use irl_fortran_interface
          integer :: i,j,k,np,nplane
-         smesh=surfmesh(nvar=5,name='plic')
+         smesh=surfmesh(nvar=8,name='plic')
          smesh%varname(1)='curv'
          smesh%varname(2)='SGSshearx'
          smesh%varname(3)='SGSsheary'
          smesh%varname(4)='SGSshearz'
          smesh%varname(5)='CLPjz'
+         smesh%varname(6)='CLx'
+         smesh%varname(7)='CLy'
+         smesh%varname(8)='CLz'
          call vf%update_surfmesh(smesh)
          np=0
          do k=vf%cfg%kmin_,vf%cfg%kmax_
@@ -373,6 +381,9 @@ contains
                         smesh%var(3,np)=SGSresV(i,j,k)
                         smesh%var(4,np)=SGSresW(i,j,k)
                         smesh%var(5,np)=CL_Pjz(i,j,k)
+                        smesh%var(6,np)=CLresU(i,j,k)
+                        smesh%var(7,np)=CLresV(i,j,k)
+                        smesh%var(8,np)=CLresW(i,j,k)
                      end if
                   end do
                end do
@@ -397,6 +408,9 @@ contains
          call ens_out%add_scalar('SGSsheary',SGSresV)
          call ens_out%add_scalar('SGSshearz',SGSresW)
          call ens_out%add_scalar('CL',CL_Pjz)
+         call ens_out%add_scalar('CLx',CLresU)
+         call ens_out%add_scalar('CLy',CLresV)
+         call ens_out%add_scalar('CLz',CLresW)
          call ens_out%add_surface('vofplic',smesh)
          ! Output to ensight
          if (ens_evt%occurs()) call ens_out%write_data(time%t)
@@ -542,7 +556,7 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            ! call add_CL_ST()
+            call add_CL_ST()
             call add_SGS_shear()
 
             ! Shear Residuals
@@ -575,10 +589,14 @@ contains
                call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf,contact_model=static_contact)
             else if (CLsolver.gt.0) then
                call fs%add_surface_tension_jump(dt=time%dt,div=fs%div,vf=vf)!,contact_model=static_contact)
-               call add_CL_ST()
+               ! call add_CL_ST()
             endif
             ! Apply Contact line Pressure jump from subroutine
-            fs%Pjz=fs%Pjz+CL_Pjz
+            !fs%Pjz=fs%Pjz+CL_Pjz
+            ! CL residuals
+            resU=resU+CLresU
+            resV=resV+CLresV
+            resW=resW+CLresW
             
             !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
@@ -619,6 +637,10 @@ contains
                               smesh%var(2,np)=SGSresU(i,j,k)
                               smesh%var(3,np)=SGSresV(i,j,k)
                               smesh%var(4,np)=SGSresW(i,j,k)
+                              smesh%var(5,np)=CL_Pjz(i,j,k)
+                              smesh%var(6,np)=CLresU(i,j,k)
+                              smesh%var(7,np)=CLresV(i,j,k)
+                              smesh%var(8,np)=CLresW(i,j,k)
                            end if
                         end do
                      end do
@@ -695,13 +717,17 @@ contains
       implicit none
       integer :: i,j,k
       real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,cos_contact_angle,tan_contact_angle
+      real(WP) :: mysurf,mycos,sin_contact_angle,cos_contact_angle,tan_contact_angle,uslip,wslip
       ! Precalculate cos(contact angle)
+      sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
       tan_contact_angle=tan(fs%contact_angle)
       SGSresU=0.0_WP
       SGSresV=0.0_WP
       SGSresW=0.0_WP
+      !CLresU=0.0_WP
+      !CLresV=0.0_WP
+      !CLresW=0.0_WP
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
@@ -712,14 +738,27 @@ contains
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! x comp - SGS shear
                   if (mysurf.gt.0.0_WP) then
-                     SGSresU(i,j,k)=(2*abs(fs%U(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(fs%cfg%dx(i)*tan_contact_angle))*&
+                     ! Surface-averaged local cos(CA)
+                     !mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
+                     !&      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
+                     ! SGS shear x
+                     SGSresU(i,j,k)=(2*abs(fs%U(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(tan_contact_angle))*&
                      & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*fs%cfg%dx(i)
+                     ! Apply x CL youngs force
+                     !CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)!**2.0_WP
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
-                  if (mysurf.gt.0.0_WP) then
-                     SGSresW(i,j,k)=(2*abs(fs%W(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(fs%cfg%dz(k)*tan_contact_angle))*&
+                  if (mysurf.gt.0.0_WP) then 
+                     ! Surface-averaged local cos(CA)
+                     !mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
+                     !&      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
+                     ! SGS Shear z
+                     SGSresW(i,j,k)=(2*abs(fs%W(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(tan_contact_angle))*&
                      & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dz(i)
+                     ! Apply z CL youngs force
+                     !CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)!**2.0_WP
+                     
                   endif
                end if 
             end do
@@ -744,8 +783,10 @@ contains
       sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
       tan_contact_angle=tan(fs%contact_angle)
-      CL_Pjz=0.0_WP ! reset CL contribution
-
+      ! reset CL contribution
+      CLresU=0.0_WP
+      CLresV=0.0_WP
+      CLresW=0.0_WP
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
@@ -762,7 +803,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! Apply x CL youngs force
-                     CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*fvof(:)))*fs%cfg%dy(j)
+                     CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*fvof(:))*fs%cfg%dy(j)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS ST
@@ -773,7 +814,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! Apply z CL youngs force
-                     CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*fvof(:)))*fs%cfg%dy(j)
+                     CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*fvof(:))*fs%cfg%dy(j)
                   endif
                end if
             end do
@@ -794,6 +835,7 @@ contains
       
       ! Deallocate work arrays
       deallocate(resU,resV,resW,Ui,Vi,Wi)
+      deallocate(CLresU,CLresV,CLresW,SGSresU,SGSresV,SGSresW)
       
    end subroutine simulation_final
    
