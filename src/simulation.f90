@@ -556,13 +556,17 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            call add_CL_ST()
+            ! call add_CL_ST()
             call add_SGS_shear()
 
             ! Shear Residuals
             resU=resU+SGSresU
             resV=resV+SGSresV
             resW=resW+SGSresW
+            ! CL residuals
+            resU=resU+CLresU
+            resV=resV+CLresV
+            resW=resW+CLresW
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
@@ -593,10 +597,6 @@ contains
             endif
             ! Apply Contact line Pressure jump from subroutine
             !fs%Pjz=fs%Pjz+CL_Pjz
-            ! CL residuals
-            resU=resU+CLresU
-            resV=resV+CLresV
-            resW=resW+CLresW
             
             !end if
             fs%psolv%rhs=-fs%cfg%vol*fs%div/time%dt
@@ -725,9 +725,9 @@ contains
       SGSresU=0.0_WP
       SGSresV=0.0_WP
       SGSresW=0.0_WP
-      !CLresU=0.0_WP
-      !CLresV=0.0_WP
-      !CLresW=0.0_WP
+      CLresU=0.0_WP
+      CLresV=0.0_WP
+      CLresW=0.0_WP
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
             do i=fs%cfg%imin_,fs%cfg%imax_+1
@@ -739,25 +739,25 @@ contains
                   ! x comp - SGS shear
                   if (mysurf.gt.0.0_WP) then
                      ! Surface-averaged local cos(CA)
-                     !mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
-                     !&      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
+                     mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
+                     &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! SGS shear x
                      SGSresU(i,j,k)=(2*abs(fs%U(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(tan_contact_angle))*&
                      & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*fs%cfg%dx(i)
                      ! Apply x CL youngs force
-                     !CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)!**2.0_WP
+                     CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)!**2.0_WP
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
                   if (mysurf.gt.0.0_WP) then 
                      ! Surface-averaged local cos(CA)
-                     !mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
-                     !&      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
+                     mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
+                     &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! SGS Shear z
                      SGSresW(i,j,k)=(2*abs(fs%W(i,j,k))*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(tan_contact_angle))*&
                      & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dz(i)
                      ! Apply z CL youngs force
-                     !CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)!**2.0_WP
+                     CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)!**2.0_WP
                      
                   endif
                end if 
