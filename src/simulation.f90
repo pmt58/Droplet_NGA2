@@ -557,7 +557,7 @@ contains
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
             ! call add_CL_ST()
-            call add_SGS_shear()
+            call add_SGS_shear_and_CL()
 
             ! Shear Residuals
             resU=resU+SGSresU
@@ -712,7 +712,7 @@ contains
    end subroutine contact_slip
    
    !> Subroutine that updates the slip velocity based on contact line model
-   subroutine add_SGS_shear()
+   subroutine add_SGS_shear_and_CL()
       use irl_fortran_interface
       implicit none
       integer :: i,j,k
@@ -764,64 +764,7 @@ contains
             end do
          end do
       end do
-   end subroutine add_SGS_shear
-
-   !> Subroutine that updates the slip velocity based on contact line model
-   subroutine add_CL_ST()
-      use irl_fortran_interface
-      implicit none
-      integer :: i,j,k
-      real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,sin_contact_angle,cos_contact_angle,tan_contact_angle,uslip,wslip
-      real(WP), dimension(:,:,:), allocatable :: GFM
-      real(WP), dimension(2) :: fvof
-      ! Allocate and zero out binarized VF for GFM-style jump distribution
-      allocate(GFM(fs%cfg%imino_:fs%cfg%imaxo_,fs%cfg%jmino_:fs%cfg%jmaxo_,fs%cfg%kmino_:fs%cfg%kmaxo_)); GFM=0.0_WP
-      ! Prepare a GFM-based strategy
-      GFM=vf%VF!real(nint(vf%VF),WP)
-      ! Precalculate cos(contact angle)
-      sin_contact_angle=sin(fs%contact_angle)
-      cos_contact_angle=cos(fs%contact_angle)
-      tan_contact_angle=tan(fs%contact_angle)
-      ! reset CL contribution
-      CLresU=0.0_WP
-      CLresV=0.0_WP
-      CLresW=0.0_WP
-      do k=fs%cfg%kmin_,fs%cfg%kmax_+1
-         do j=fs%cfg%jmin_,fs%cfg%jmax_+1
-            do i=fs%cfg%imin_,fs%cfg%imax_+1
-               ! Check if there is a wall in y-
-               if (fs%mask(i,j-1,k).eq.1) then
-                  ! Define wall normal
-                  nw=[0.0_WP,+1.0_WP,0.0_WP]
-                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
-                  ! x comp - SGS ST
-                  if (mysurf.gt.0.0_WP) then
-                     ! Compute the liquid area fractions from GFM
-                     fvof=GFM(i-1:i,j,k)
-                     ! Surface-averaged local cos(CA)
-                     mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
-                     &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
-                     ! Apply x CL youngs force
-                     CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*fvof(:))*fs%cfg%dy(j)
-                  endif
-                  mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
-                  ! z comp - SGS ST
-                  if (mysurf.gt.0.0_WP) then
-                     ! Compute the liquid area fractions from GFM
-                     fvof=GFM(i,j,k-1:k)
-                     ! Surface-averaged local cos(CA)
-                     mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
-                     &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
-                     ! Apply z CL youngs force
-                     CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*fvof(:))*fs%cfg%dy(j)
-                  endif
-               end if
-            end do
-         end do
-      end do
-   end subroutine add_CL_ST
-
+   end subroutine add_SGS_shear_and_CL
 
    !> Finalize the NGA2 simulation
    subroutine simulation_final
