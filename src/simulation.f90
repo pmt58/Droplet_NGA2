@@ -556,17 +556,12 @@ contains
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
             ! Add SGS stress in cells with CL model
-            ! call add_CL_ST()
             call add_SGS_shear_and_CL()
 
-            ! Shear Residuals
-            resU=resU+SGSresU
-            resV=resV+SGSresV
-            resW=resW+SGSresW
-            ! CL residuals
-            resU=resU+CLresU
-            resV=resV+CLresV
-            resW=resW+CLresW
+            ! Add Shear and CL Residuals
+            resU=resU+SGSresU+CLresU
+            resV=resV+SGSresV+CLresV
+            resW=resW+SGSresW+CLresW
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
@@ -758,7 +753,6 @@ contains
                      & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dz(i)
                      ! Apply z CL youngs force
                      CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)!**2.0_WP
-                     
                   endif
                end if 
             end do
