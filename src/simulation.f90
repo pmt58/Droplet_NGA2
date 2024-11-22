@@ -558,10 +558,14 @@ contains
             ! Add SGS stress in cells with CL model
             call add_SGS_shear_and_CL()
 
-            ! Add Shear and CL Residuals
-            resU=resU+SGSresU+CLresU
-            resV=resV+SGSresV+CLresV
-            resW=resW+SGSresW+CLresW
+            ! Add Shear residual
+            resU=resU+SGSresU
+            resV=resV+SGSresV
+            resW=resW+SGSresW
+            ! Add CL residual
+            resU=resU+CLresU
+            resV=resV+CLresV
+            resW=resW+CLresW
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
@@ -741,6 +745,8 @@ contains
                      & sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*fs%cfg%dx(i)
                      ! Apply x CL youngs force
                      CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*fs%cfg%dy(j)!**2.0_WP
+                     ! Pressure based CL model
+                     ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)
                   endif
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
                   ! z comp - SGS shear
@@ -753,6 +759,8 @@ contains
                      & sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dz(i)
                      ! Apply z CL youngs force
                      CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*fs%cfg%dy(j)!**2.0_WP
+                     ! Pressure based CL model
+                     ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)
                   endif
                end if 
             end do
