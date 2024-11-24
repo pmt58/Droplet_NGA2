@@ -5,9 +5,9 @@ Partition : 2 1 2
 Lx : 5
 Ly : 5
 Lz : 5
-nx : 30
-ny : 30
-nz : 30
+nx : 45
+ny : 45
+nz : 45
 # Contact line solver type (0:noslip, 1:beta=1, 2:new beta relation)
 CLsolver : 2
 Beta : 0.2
@@ -23,7 +23,7 @@ Slip Length : 1e-5
 # Time integration
 Max timestep size : 5e-4
 Max cfl number :    0.5
-Max time :          20 
+Max time :          10 
 
 # Pressure solver
 Pressure tolerance : 1e-6
