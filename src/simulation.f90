@@ -503,9 +503,9 @@ contains
          call time%increment()
          
          ! Implement slip condition for contact line modeling here
-         if (CLsolver.ne.0) then!enable slip model for solver numbers >0
+         if (CLsolver.eq.2) then!enable slip model for solver numbers =2
             call contact_slip()
-         end if
+         end if ! no advection in CL models 0,1
          ! Remember old VOF
          vf%VFold=vf%VF
          
@@ -555,17 +555,22 @@ contains
             call fs%get_dmomdt(resU,resV,resW)
             ! Momentum source terms
             call fs%addsrc_gravity(resU,resV,resW)
-            ! Add SGS stress in cells with CL model
-            call add_SGS_shear_and_CL()
-
-            ! Add Shear residual
-            resU=resU+SGSresU
-            resV=resV+SGSresV
-            resW=resW+SGSresW
-            ! Add CL residual
-            resU=resU+CLresU
-            resV=resV+CLresV
-            resW=resW+CLresW
+            
+            ! Switch statement for SGS models 
+            if (CLsolver.eq.0) then
+               ! do nothing No SGS model for base case
+            else if (CLsolver.gt.0) then
+               ! Add SGS stress in cells with CL model 1,2
+               call add_SGS_shear_and_CL()
+               ! Add Shear residual
+               resU=resU+SGSresU
+               resV=resV+SGSresV
+               resW=resW+SGSresW
+               ! Add CL residual
+               resU=resU+CLresU
+               resV=resV+CLresV
+               resW=resW+CLresW
+            endif
 
             ! Assemble explicit residual
             resU=-2.0_WP*fs%rho_U*fs%U+(fs%rho_Uold+fs%rho_U)*fs%Uold+time%dt*resU
