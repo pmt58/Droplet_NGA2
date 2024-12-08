@@ -63,6 +63,7 @@ contains
          cfg%VF=1.0_WP
          ! Add plate below y=0
          if (cfg%jproc.eq.1) cfg%VF(:,cfg%jmino:cfg%jmin-1,:)=0.0_WP
+         call cfg%sync(cfg%VF)
       end block create_walls
       
       
