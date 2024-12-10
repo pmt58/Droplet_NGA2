@@ -347,7 +347,7 @@ contains
          call fs%interp_vel(Ui,Vi,Wi)
          call fs%get_div()
          ! Force use of new Beta Factor
-         call param_read('Slip Length',L_slip,default=1.0_WP);L_slip=1.0_WP/L_slip
+         call param_read('Slip Length',L_slip,default=1.0_WP);
          Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*my_log(L_slip*fs%cfg%dx(1))*fs%visc_l)!fs%cfg%dx(1)
          if (CLsolver.eq.1) then
             call param_read('Beta',Beta_NS,default=1.0_WP)!Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*fs%visc_l)
@@ -521,17 +521,17 @@ contains
          call vf%advance(dt=time%dt,U=fs%U,V=fs%V,W=fs%W)
          
          !Reset velocity in the wall
-         do k=fs%cfg%kmin_,fs%cfg%kmax_+1
-            do j=fs%cfg%jmin_,fs%cfg%jmax_+1
-               do i=fs%cfg%imin_,fs%cfg%imax_+1
-                  ! Check if there is a wall in y-
-                  if (fs%mask(i,j-1,k).eq.1) then
-                     fs%U(i,j-1,k)=0.0_WP 
-                     fs%W(i,j-1,k)=0.0_WP 
-                  end if
-               end do
-            end do
-         end do
+         !do k=fs%cfg%kmin_,fs%cfg%kmax_+1
+         !   do j=fs%cfg%jmin_,fs%cfg%jmax_+1
+         !      do i=fs%cfg%imin_,fs%cfg%imax_+1
+         !         ! Check if there is a wall in y-
+         !         if (fs%mask(i,j-1,k).eq.1) then
+         !            fs%U(i,j-1,k)=0.0_WP 
+         !            fs%W(i,j-1,k)=0.0_WP 
+         !         end if
+         !      end do
+         !   end do
+         !end do
 
          ! Remember old velocity
          fs%Uold=fs%U
@@ -746,10 +746,11 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! SGS shear x
-                     SGSresU(i,j,k)=-(2*fs%U(i,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dx(i))/(tan_contact_angle))*&
+                     SGSresU(i,j,k)=-(2*fs%U(i,j,k)*fs%visc_l*my_log(fs%cfg%dx(i)/L_slip)/(tan_contact_angle))*&
                      & abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))/(fs%cfg%dx(i))!**2.0_WP)
                      ! Apply x CL youngs force
-                     CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))/(fs%cfg%dy(j))!**2.0_WP)
+                     CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*&
+                     & ((1/fs%cfg%dy(j))-(2/(3*tan_contact_angle*my_log(fs%cfg%dx(i)/L_slip))))
                      ! Pressure based CL model
                      ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)
                   endif
@@ -760,10 +761,11 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! SGS Shear z
-                     SGSresW(i,j,k)=-(2*fs%W(i,j,k)*fs%visc_l*my_log(L_slip*fs%cfg%dz(k))/(tan_contact_angle))*&
+                     SGSresW(i,j,k)=-(2*fs%W(i,j,k)*fs%visc_l*my_log(fs%cfg%dz(k)/L_slip)/(tan_contact_angle))*&
                      & abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))/(fs%cfg%dz(i))!**2.0_WP)
                      ! Apply z CL youngs force
-                     CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))/(fs%cfg%dy(j))!**2.0_WP)
+                     CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*&
+                     & ((1/fs%cfg%dy(j))-(2/(3*tan_contact_angle*my_log(fs%cfg%dz(i)/L_slip))))
                      ! Pressure based CL model
                      ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)
                   endif

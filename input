@@ -1,29 +1,29 @@
 # Parallelization
-Partition : 6 1 2
+Partition : 2 1 2
 
 # Mesh definition
-Lx : 25
+Lx : 5
 Ly : 5
 Lz : 5
-nx : 225
-ny : 45
-nz : 45
+nx : 32
+ny : 32
+nz : 32
 # Contact line solver type (0:noslip, 1:beta=1, 2:new beta relation)
 CLsolver : 2
 Beta : 0.2
 # Non-dimensional fluid properties
 Density ratio :   1000
 Viscosity ratio : 50
-Oh : 1.0e-2    #<<< Oh=mu_l/sqrt(rho_l*R*sigma)
+Oh : 1.0e-1    #<<< Oh=mu_l/sqrt(rho_l*R*sigma)
 CA : 60 #53.5
-Initial contact angle : 140
-Gravity : 0.7071 -0.7071 0.0
+Initial contact angle : 160
+Gravity : 0 0 0
 Slip Length : 1e-5
 
 # Time integration
-Max timestep size : 2e-3
+Max timestep size : 5e-4
 Max cfl number :    0.5
-Max time :          20 
+Max time :          15 
 
 # Pressure solver
 Pressure tolerance : 1e-6
