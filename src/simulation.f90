@@ -41,7 +41,7 @@ module simulation
    
    !> Problem definition and post-processing
    real(WP), dimension(3) :: Cdrop
-   real(WP) :: Rdrop, EQ_R, Beta_NS, L_slip
+   real(WP) :: Rdrop, EQ_R, Lambda_NS, L_slip
    integer :: CLsolver
    real(WP) :: height,R_wet,R_alpha,CArad,CAdeg,CA_ini,CLvel,C,alpha
    reaL(WP), dimension(:), allocatable :: all_time,all_rwet
@@ -346,11 +346,11 @@ contains
          ! Calculate cell-centered velocities and divergence
          call fs%interp_vel(Ui,Vi,Wi)
          call fs%get_div()
-         ! Force use of new Beta Factor
+         ! Force use of new Lambda Factor
          call param_read('Slip Length',L_slip,default=1.0_WP);
-         Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*my_log(L_slip*fs%cfg%dx(1))*fs%visc_l)!fs%cfg%dx(1)
+         Lambda_NS=1.0_WP!fs%contact_angle**2/(sin(fs%contact_angle)*3*my_log(L_slip*fs%cfg%dx(1))*fs%visc_l)!fs%cfg%dx(1)
          if (CLsolver.eq.1) then
-            call param_read('Beta',Beta_NS,default=1.0_WP)!Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*fs%visc_l)
+            call param_read('Lambda',Lambda_NS,default=1.0_WP)!Beta_NS=fs%contact_angle**2/(sin(fs%contact_angle)*3*fs%visc_l)
          end if
       end block create_and_initialize_flow_solver
       
@@ -503,7 +503,7 @@ contains
          call time%increment()
          
          ! Implement slip condition for contact line modeling here
-         if (CLsolver.eq.2) then!enable slip model for solver numbers =2
+         if (CLsolver.eq.1) then!enable slip model for solver numbers =1,2
             call contact_slip()
          end if ! no advection in CL models 0,1
          ! Remember old VOF
@@ -559,8 +559,10 @@ contains
             ! Switch statement for SGS models 
             if (CLsolver.eq.0) then
                ! do nothing No SGS model for base case
-            else if (CLsolver.gt.0) then
-               ! Add SGS stress in cells with CL model 1,2
+            else if (CLsolver.eq.1) then
+               ! do nothing No SGS model for CL model 1
+            else if (CLsolver.eq.2) then
+               ! Add SGS stress in cells with CL model 2
                call add_SGS_shear_and_CL()
                ! Add Shear residual
                resU=resU+SGSresU
@@ -673,10 +675,13 @@ contains
       implicit none
       integer :: i,j,k
       real(WP), dimension(3) :: nw
-      real(WP) :: mysurf,mycos,cos_contact_angle
+      real(WP) :: mysurf,mycos,sin_contact_angle,cos_contact_angle
+      real(WP) :: dcorr
       ! Precalculate cos(contact angle)
+      sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
-
+      dcorr=Lambda_NS*((1+(3*Lambda_NS*sin_contact_angle*(fs%contact_angle**(-2.0_WP))*my_log(fs%cfg%min_meshsize/L_slip)))**(-1.0_WP))
+      !dcorr=(fs%contact_angle**2.0_WP)/(3*sin_contact_angle*my_log(fs%cfg%min_meshsize/L_slip))
       ! Loop over domain and identify cells that require contact angle model
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
@@ -696,7 +701,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i-1,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i-1,j,k)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i  ,j,k)))*dot_product(calculateNormal(vf%interface_polygon(1,i  ,j,k)),nw))/mysurf
                      ! Apply slip velocity
-                     fs%U(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
+                     fs%U(i,j-1,k)=dcorr*fs%sigma/fs%visc_l*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)*fs%cfg%dx(i))
                   end if
                   ! Handle W-slip
                   mysurf=abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))+abs(calculateVolume(vf%interface_polygon(1,i,j,k)))
@@ -705,7 +710,7 @@ contains
                      mycos=(abs(calculateVolume(vf%interface_polygon(1,i,j,k-1)))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k-1)),nw)+&
                      &      abs(calculateVolume(vf%interface_polygon(1,i,j,k  )))*dot_product(calculateNormal(vf%interface_polygon(1,i,j,k  )),nw))/mysurf
                      ! Apply slip velocity
-                     fs%W(i,j-1,k)=Beta_NS*fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
+                     fs%W(i,j-1,k)=dcorr*fs%sigma/fs%visc_l*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)*fs%cfg%dz(k))
                   end if
                end if
                
@@ -750,7 +755,7 @@ contains
                      & abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))/(fs%cfg%dx(i))!**2.0_WP)
                      ! Apply x CL youngs force
                      CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*&
-                     & ((1/fs%cfg%dy(j))-(2/(3*tan_contact_angle*my_log(fs%cfg%dx(i)/L_slip))))
+                     & ((1/fs%cfg%dx(i))-(2/(3*tan_contact_angle*my_log(fs%cfg%dx(i)/L_slip)*fs%cfg%dx(i))))
                      ! Pressure based CL model
                      ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)
                   endif
@@ -765,7 +770,7 @@ contains
                      & abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))/(fs%cfg%dz(i))!**2.0_WP)
                      ! Apply z CL youngs force
                      CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*&
-                     & ((1/fs%cfg%dy(j))-(2/(3*tan_contact_angle*my_log(fs%cfg%dz(i)/L_slip))))
+                     & ((1/fs%cfg%dz(k))-(2/(3*tan_contact_angle*my_log(fs%cfg%dz(i)/L_slip)*fs%cfg%dz(k))))
                      ! Pressure based CL model
                      ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)
                   endif
