@@ -680,8 +680,8 @@ contains
       ! Precalculate cos(contact angle)
       sin_contact_angle=sin(fs%contact_angle)
       cos_contact_angle=cos(fs%contact_angle)
-      dcorr=Lambda_NS*((1+(3*Lambda_NS*sin_contact_angle*(fs%contact_angle**(-2.0_WP))*my_log(fs%cfg%min_meshsize/L_slip)))**(-1.0_WP))
-      !dcorr=(fs%contact_angle**2.0_WP)/(3*sin_contact_angle*my_log(fs%cfg%min_meshsize/L_slip))
+      !dcorr=Lambda_NS*((1+(3*Lambda_NS*sin_contact_angle*(fs%contact_angle**(-2.0_WP))*my_log(fs%cfg%min_meshsize/L_slip)))**(-1.0_WP))
+      dcorr=(fs%contact_angle**2.0_WP)/(3*sin_contact_angle*my_log(fs%cfg%min_meshsize/L_slip))
       ! Loop over domain and identify cells that require contact angle model
       do k=fs%cfg%kmin_,fs%cfg%kmax_+1
          do j=fs%cfg%jmin_,fs%cfg%jmax_+1
