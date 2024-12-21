@@ -755,7 +755,7 @@ contains
                      & abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))/(fs%cfg%dx(i))!**2.0_WP)
                      ! Apply x CL youngs force
                      CLresU(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k))*&
-                     & ((1/fs%cfg%dx(i))-(2/(3*tan_contact_angle*my_log(fs%cfg%dx(i)/L_slip)*fs%cfg%dx(i))))
+                     & (1/fs%cfg%dx(i))
                      ! Pressure based CL model
                      ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divu_x(:,i,j,k)*vf%VF(i-1:i,j,k)))*fs%cfg%dy(j)
                   endif
@@ -770,7 +770,7 @@ contains
                      & abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))/(fs%cfg%dz(i))!**2.0_WP)
                      ! Apply z CL youngs force
                      CLresW(i,j,k)=fs%sigma*(mycos-cos_contact_angle)*sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k))*&
-                     & ((1/fs%cfg%dz(k))-(2/(3*tan_contact_angle*my_log(fs%cfg%dz(i)/L_slip)*fs%cfg%dz(k))))
+                     & (1/fs%cfg%dz(k))
                      ! Pressure based CL model
                      ! CL_Pjz(i,j,k)=CL_Pjz(i,j,k)+fs%sigma*(mycos-cos_contact_angle)*abs(sum(fs%divw_z(:,i,j,k)*vf%VF(i,j,k-1:k)))*fs%cfg%dy(j)
                   endif
